@@ -3,6 +3,7 @@ var _ = require('underscore')
   , path = require('path')
   , assert = require('assert')
   , helpers = require('../helpers')
+  , errors = require('../../lib/core/errors')
   , Patch = require('../../lib/core/Patch')
   , PdObject = require('../../lib/core/PdObject')
   , portlets = require('../../lib/core/portlets')
@@ -118,7 +119,7 @@ describe('Pd', function() {
       assert.equal(obj.outlets.length, 1)
       assert.equal(obj.inlets.length, 0)
       assert.equal(obj.objects.length, 2)
-      
+
       // Check objects and connections
       assert.equal(osc.o(0).connections.length, 1)
       assert.equal(outlet.i(0).connections.length, 1)
@@ -139,7 +140,7 @@ describe('Pd', function() {
       assert.equal(obj.outlets.length, 1)
       assert.equal(obj.inlets.length, 0)
       assert.equal(obj.objects.length, 2)
-      
+
       // Check objects and connections
       assert.equal(osc.o(0).connections.length, 1)
       assert.equal(outlet.i(0).connections.length, 1)
@@ -150,7 +151,7 @@ describe('Pd', function() {
   })
 
   describe('.loadPatch', function() {
-    
+
     it('should load a simple patch properly', function() {
       var patchStr = fs.readFileSync(__dirname + '/patches/simple.pd').toString()
         , patch = Pd.loadPatch(patchStr)
@@ -170,6 +171,10 @@ describe('Pd', function() {
       assert.equal(dac.i(0).connections.length, 1)
       assert.equal(dac.i(1).connections.length, 0)
       assert.ok(dac.i(0).connections[0] === osc.o(0))
+
+      // Check patchData is present
+      assert.equal(patch.patchData.nodes.length, 2)
+      assert.equal(patch.patchData.connections.length, 1)
     })
 
     it('should load a patch with a subpatch properly', function() {
@@ -209,7 +214,7 @@ describe('Pd', function() {
       assert.ok(subpatch.o(0).connections[0] === dac.i(0))
       assert.ok(subpatch.o(0).connections[1] === dac.i(1))
     })
-    
+
     it('should not call object.start twice if Pd already started', function() {
       var patchStr = fs.readFileSync(__dirname + '/patches/logStartPatch.pd').toString()
         , startCalled = 0
@@ -222,6 +227,81 @@ describe('Pd', function() {
       patch = Pd.loadPatch(patchStr)
       assert.equal(patch.objects.length, 1)
       assert.equal(startCalled, 1)
+    })
+
+    it('should load patch with graph', function() {
+      var patchStr = fs.readFileSync(__dirname + '/patches/graph.pd').toString()
+        , patch = Pd.loadPatch(patchStr)
+    })
+
+    it('should throw PatchLoadError if unknown objects', function() {
+      var patchData = {
+          nodes: [ 
+            {id: 0, proto: 'idontexist'}, 
+            {id: 1, proto: 'outlet~'}, 
+            {id: 2, proto: 'meneither'}
+          ], connections: []
+        }, thrown = false
+
+      try { Pd.loadPatch(patchData) } catch(err) {
+        thrown = true
+        assert.ok(err instanceof errors.PatchLoadError)
+        assert.equal(err.errorList.length, 2)
+        assert.ok(err.errorList[0][1] instanceof errors.UnknownObjectError)
+        assert.equal(err.errorList[0][1].objectType, 'idontexist')
+        assert.ok(err.errorList[1][1] instanceof errors.UnknownObjectError)
+        assert.equal(err.errorList[1][1].objectType, 'meneither')
+      }
+      assert.ok(thrown)
+    })
+
+    it('should throw PatchLoadError if unknown objects and connections between them', function() {
+      var patchData = {
+          nodes: [ 
+            {id: 0, proto: 'idontexist'}, 
+            {id: 1, proto: 'outlet~'}
+          ], 
+          connections: [
+            { source: { id: 0, port: 0 }, sink: { id: 1, port: 0 } }
+          ]
+        }, thrown = false
+
+      try { Pd.loadPatch(patchData) } catch(err) {
+        thrown = true
+        assert.ok(err instanceof errors.PatchLoadError)
+        assert.equal(err.errorList.length, 2)
+      }
+      assert.ok(thrown)
+    })
+
+    it('should throw PatchLoadError if invalid connection', function() {
+      var patchData = {
+          nodes: [ 
+            {id: 0, proto: 'osc~'}, 
+            {id: 1, proto: 'outlet~'}
+          ], 
+          connections: [
+            { source: { id: 0, port: 0 }, sink: { id: 1, port: 33 } }, // Invalid portlet
+            { source: { id: 0, port: 0 }, sink: { id: 11, port: 0 } }  // Invalid object id
+          ]
+        }, thrown = false
+
+      try { Pd.loadPatch(patchData) } catch(err) {
+        thrown = true
+        assert.ok(err instanceof errors.PatchLoadError)
+        assert.equal(err.errorList.length, 2)
+      }
+      assert.ok(thrown)
+    })
+
+  })
+
+  describe('.parsePatch', function() {
+
+    it('should return patch data and reuse it in .loadPatch', function() {
+      var patchStr = fs.readFileSync(__dirname + '/patches/simple.pd').toString()
+        , patchData = Pd.parsePatch(patchStr)
+      assert.equal(patchData.nodes.length, 2)
     })
 
   })
