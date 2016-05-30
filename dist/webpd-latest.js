@@ -1737,7 +1737,12 @@ exports.declareObjects = function(library) {
           // For some reason in Pd $0 in a message is always 0.
           args = args.slice(0)
           args.unshift(0)
-          this.obj.outlets[0].message(utils.timeTag(this.obj.resolver(args), timeTag))
+          // resolve each message group
+          for(var i=0 ; i<this.obj.resolvers.length ; i++)
+          {
+            var resolver = this.obj.resolvers[i]
+            this.obj.outlets[0].message(utils.timeTag(resolver(args), timeTag))
+          }
         }
       })
 
@@ -1746,7 +1751,31 @@ exports.declareObjects = function(library) {
     outletDefs: [portlets.Outlet],
 
     init: function(args) {
-      this.resolver = utils.getDollarResolver(args)
+      this.createResolvers(args)
+    },
+
+    createResolvers: function(args) {
+      // split comma separated message in groups.
+      var argsGroups = [[]]
+      for(var i=0 ; i<args.length ; i++)
+      {
+        var arg = args[i]
+        if(arg == ","){
+          argsGroups.push([])
+        }else{
+          argsGroups[argsGroups.length-1].push(arg)
+        }
+      }
+      if(argsGroups[argsGroups.length-1].length == 0){
+        argsGroups.pop()
+      }
+      // then create resolvers for each group.
+      this.resolvers = []
+      for(var i in argsGroups)
+      {
+        var argsGroup = argsGroups[i]
+        this.resolvers.push(utils.getDollarResolver(argsGroup))
+      }      
     }
 
   })
@@ -1910,12 +1939,28 @@ exports.declareObjects = function(library) {
 
   library['/'] = _TwoVarFunctionBase.extend({
     type: '/',
-    compute: function() { return this.valLeft / this.valRight }
+    compute: function() { return this.valRight == 0 ? 0 : this.valLeft / this.valRight }
+  })
+
+  library['min'] = _TwoVarFunctionBase.extend({
+    type: 'min',
+    compute: function() { return Math.min(this.valLeft, this.valRight) }
+  })
+
+  library['max'] = _TwoVarFunctionBase.extend({
+    type: 'max',
+    compute: function() { return Math.max(this.valLeft, this.valRight) }
   })
 
   library['mod'] = library['%'] = _TwoVarFunctionBase.extend({
     type: 'mod',
-    compute: function() { return this.valLeft % this.valRight }
+    compute: function() { 
+      if(this.valRight <= 0)
+        return 0
+      if(this.valLeft < 0)
+        return this.valRight + this.valLeft % this.valRight
+      return this.valLeft % this.valRight
+    }
   })
 
   library['pow'] = _TwoVarFunctionBase.extend({
@@ -1965,6 +2010,11 @@ exports.declareObjects = function(library) {
     compute: function(inVal) { return Math.tan(inVal) }
   })
 
+  library['atan2'] = _TwoVarFunctionBase.extend({
+    type: 'atan2',
+    compute: function() { return Math.atan2(this.valRight, this.valLeft) }
+  })
+
   library['atan'] = _OneNumVarFunctionBase.extend({
     type: 'atan',
     compute: function(inVal) { return Math.atan(inVal) }
@@ -1990,6 +2040,11 @@ exports.declareObjects = function(library) {
     compute: function(inVal) { return Math.sqrt(inVal) }
   })
 
+  library['wrap'] = _OneNumVarFunctionBase.extend({
+    type: 'wrap',
+    compute: function(inVal) { return inVal - Math.floor(inVal) }
+  })
+
   library['mtof'] = _OneNumVarFunctionBase.extend({
     type: 'mtof',
     maxMidiNote: 8.17579891564 * Math.exp((0.0577622650 * 1499)),
@@ -2000,9 +2055,44 @@ exports.declareObjects = function(library) {
         return console.error('invalid [mtof] value ' + note)
       if (note <= -1500) out = 0
       else if (note > 1499) out = this.maxMidiNote
+      // optimized version of formula : Math.pow(2, (note - 69) / 12) * 440 
       else out = 8.17579891564 * Math.exp((0.0577622650 * note))
       return out 
     }
+  })
+
+  library['ftom'] = _OneNumVarFunctionBase.extend({
+    type: 'ftom',
+    compute: function(freq) { 
+      if (!_.isNumber(freq))
+        return console.error('invalid [ftom] value ' + freq)
+      if (freq <= 0)
+        return -1500
+      // optimized version of formula : 12 * Math.log(freq / 440) / Math.LN2 + 69
+      // which is the same as : Math.log(freq / mtof(0)) * (12 / Math.LN2) 
+      // which is the same as : Math.log(freq / 8.1757989156) * (12 / Math.LN2) 
+      return Math.log(freq * 0.122312206) * 17.312340491
+    }
+  })
+
+  library['rmstodb'] = _OneNumVarFunctionBase.extend({
+    type: 'rmstodb',
+    compute: function(inVal) { return inVal <= 0 ? 0 : 20 * Math.log(inVal) / Math.LN10 + 100 }
+  })
+
+  library['dbtorms'] = _OneNumVarFunctionBase.extend({
+    type: 'dbtorms',
+    compute: function(inVal) { return inVal <= 0 ? 0 : Math.exp(Math.LN10 * (inVal - 100) / 20)}
+  })
+
+  library['powtodb'] = _OneNumVarFunctionBase.extend({
+    type: 'powtodb',
+    compute: function(inVal) { return inVal <= 0 ? 0 : 10 * Math.log(inVal) / Math.LN10 + 100 }
+  })
+
+  library['dbtopow'] = _OneNumVarFunctionBase.extend({
+    type: 'dbtopow',
+    compute: function(inVal) { return inVal <= 0 ? 0 : Math.exp(Math.LN10 * (inVal - 100) / 10)}
   })
 
   library['samplerate~'] = _OneVarFunctionBase.extend({
@@ -2203,6 +2293,100 @@ exports.declareObjects = function(library) {
     setVal: function(val) {
       if (!_.isNumber(val))
         return console.error('invalid [moses] value ' + val)
+      this.val = val
+    }
+
+  })
+
+  library['clip'] = PdObject.extend({
+
+    type: 'clip',
+
+    inletDefs: [
+
+      portlets.Inlet.extend({
+        message: function(args) {
+          var val = args[0]
+          if (!_.isNumber(val))
+            return console.error('invalid [clip] value ' + val)
+          if (val < this.obj.min) this.obj.o(0).message(utils.timeTag([this.obj.min], args))
+          else if (val > this.obj.max) this.obj.o(0).message(utils.timeTag([this.obj.max], args))
+          else this.obj.o(0).message(utils.timeTag([val], args))
+        }
+      }),
+
+      portlets.Inlet.extend({
+        message: function(args) {
+          var val = args[0]
+          this.obj.setMin(val)
+        }
+      }),
+
+      portlets.Inlet.extend({
+        message: function(args) {
+          var val = args[0]
+          this.obj.setMax(val)
+        }
+      })
+
+    ],
+
+    outletDefs: [portlets.Outlet],
+
+    init: function(args) {
+      this.setMin(args[0] || 0)
+      this.setMax(args[1] || 0)
+    },
+
+    setMin: function(val) {
+      if (!_.isNumber(val))
+        return console.error('invalid [clip] min value ' + val)
+      this.min = val
+    },
+
+    setMax: function(val) {
+      if (!_.isNumber(val))
+        return console.error('invalid [clip] max value ' + val)
+      this.max = val
+    }
+
+  })
+
+  library['swap'] = PdObject.extend({
+
+    type: 'swap',
+
+    inletDefs: [
+
+      portlets.Inlet.extend({
+        message: function(args) {
+          var val = args[0]
+          if (!_.isNumber(val))
+            return console.error('invalid [swap] value ' + val)
+          this.obj.o(1).message(utils.timeTag([val], args))
+          this.obj.o(0).message(utils.timeTag([this.obj.val], args))
+        }
+      }),
+
+      portlets.Inlet.extend({
+        message: function(args) {
+          var val = args[0]
+          this.obj.setVal(val)
+        }
+      })
+
+    ],
+
+    outletDefs: [portlets.Outlet, portlets.Outlet],
+
+    init: function(args) {
+      var val = args[0]
+      this.setVal(val || 0)
+    },
+
+    setVal: function(val) {
+      if (!_.isNumber(val))
+        return console.error('invalid [swap] value ' + val)
       this.val = val
     }
 
@@ -4165,9 +4349,6 @@ var DspOutlet = exports.DspOutlet = BaseOutlet.extend({
     var self = this
     this._waa = { node: node, output: output }
 
-    // remove offset for AudioParam
-    if (node instanceof AudioParam) node.setValueAtTime(0, 0)
-
     if (this._started) {
       _.values(this._waaConnections).forEach(function(connector) {
         connector.swapSource(node, output)
@@ -4212,6 +4393,26 @@ exports.declareObjects = function(library) {
   })
 
   var OutletOutletDsp = DspOutlet.extend({
+    stop: function() {
+      DspOutlet.prototype.stop.apply(this, arguments)
+      if (this._outNodeConnector) this._outNodeConnector.close() 
+      this._outNodeConnector = null
+      if (this._outNode) this._outNode.disconnect()
+      this._outNode = null
+    },
+
+    setWaa: function(node, output) {
+      // Add a node `_outNode` which can be used to connect a WebPd patch
+      // to an external Web Audio node
+      if (this._outNodeConnector) this._outNodeConnector.close()
+      if (!this._outNode) this._outNode = pdGlob.audio.context.createGain()
+      DspOutlet.prototype.setWaa.apply(this, arguments)
+      this._outNodeConnector = new WAAWire(pdGlob.audio.context)
+      this._outNodeConnector.connect(this._waa.node, this._outNode, this._waa.output, 0)
+    },
+
+    getOutNode: function() { return this._outNode },
+
     message: function(args) {
       // Normal dsp outlets cannot receive messages,
       // but this one just transmits them unchanged.
