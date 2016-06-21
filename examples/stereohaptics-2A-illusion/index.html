@@ -1,0 +1,202 @@
+<!doctype HTML>
+
+<html>
+  <head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="../assets/jquery-2.1.0.min.js"></script>
+	<script type="text/javascript" src="../assets/pd-fileutils.js"></script>
+    <script type="text/javascript" src="../../dist/webpd-latest.js"></script>
+    <script type="text/javascript" src="../assets/nexusUI.js"></script>
+	<script type="text/javascript" src="../assets/webaudiohaptics.js"></script>
+  </head>
+
+  <body>
+
+    <style>
+      body {
+        text-align:center;
+      } 
+    </style>
+
+    <h1 style="font-family:helvetica neue;font-weight:300">Activity 2A illusion AM</h1>
+
+    <canvas nx="button" id="illusionTrigger" label="Trigger" height="50" width="100"></canvas>
+    <canvas nx="slider" id="illusionFreq" label="Frequency" min="10" max="1000" height="50" width="100"></canvas>
+	<canvas nx="slider" id="illusionAmp" label="Amplitude" min="0" max="2" height="50" width="100"></canvas>
+    <canvas nx="slider" id="illusionMod" label="Modulation" min="0.1" max="200" height="50" width="100"></canvas>
+    <canvas nx="slider" id="illusionDur" label="Duration" min="0" max="4000" height="50" width="100"></canvas>
+	<canvas nx="slider" id="illusionSOA" label="SOA" min="0" max="4000" height="50" width="100"></canvas>
+	<canvas nx="slider" id="illusionRamp" label="Ramp" min="0.1" max="200" height="50" width="100"></canvas>
+	<br/>
+	<canvas nx="envelope" id="illusionLineLeft" label="Envelope (left)" height="100" width="200"></canvas>
+	<canvas nx="envelope" id="illusionLineRight" label="Envelope (right)" height="100" width="200"></canvas>
+	
+	<script>
+
+	var patchUrl = 'pd/2A.illusion_AM.pd'
+
+		nxonload[patchUrl] = function() {
+
+			if (illusionTrigger) {
+				illusionTrigger.on('press', function(data) {
+					if (data === 1) {
+						Pd.send('illusionTrigger', [data]);
+						if (illusionLineLeft) {
+							illusionLineLeft.start();
+						}
+						if (illusionLineRight) {
+							illusionLineRight.start();
+						}
+					}
+				})
+			}
+
+			if (illusionFreq) {
+				illusionFreq.on('value', function(data) {
+					Pd.send('illusionFreq', [data])
+				})
+					Pd.receive('illusionFreqInit', function(args) {
+						illusionFreq.set({
+							value: args[0]
+						})
+					})
+			}
+			if (illusionAmp) {
+				illusionAmp.on('value', function(data) {
+					Pd.send('illusionAmp', [data])
+				})
+					Pd.receive('illusionAmpInit', function(args) {
+						illusionAmp.set({
+							value: args[0]
+						})
+					})
+			}
+			if (illusionMod) {
+				illusionMod.on('value', function(data) {
+					Pd.send('illusionMod', [data])
+				})
+					Pd.receive('illusionModInit', function(args) {
+						illusionMod.set({
+							value: args[0]
+						})
+					})
+			}	
+			
+			if (illusionDur) {
+				illusionDur.on('value', function(data) {
+					Pd.send('illusionDur', [data])
+				})
+					Pd.receive('illusionDurInit', function(args) {
+						illusionDur.set({
+							value: args[0]
+						})
+					})
+			}
+			
+			if (illusionSOA) {
+				illusionSOA.on('value', function(data) {
+					Pd.send('illusionSOA', [data])
+				})
+					Pd.receive('illusionSOAInit', function(args) {
+						illusionSOA.set({
+							value: args[0]
+						})
+					})
+			}
+			
+			if (illusionRamp) {
+				illusionRamp.on('value', function(data) {
+					Pd.send('illusionRamp', [data])
+				})
+					Pd.receive('illusionRampInit', function(args) {
+						illusionRamp.set({
+							value: args[0]
+						})
+					})
+			}
+			
+			if (illusionLineLeft) {
+				illusionLineLeft.set({
+					points: [{
+						x: 0,
+						y: 0
+					}]
+				})
+			}
+			
+			if (illusionLineRight) {
+				illusionLineRight.set({
+					points: [{
+						x: 0,
+						y: 0
+					}]
+				})
+			}
+
+			Pd.receive('illusionLineLeft', function(args) {
+				var points = illusionLineLeft.val.points;
+				if(args.length === 1 && args[0] === 0){
+					points = [];
+				}
+				var maxDuration = 0;
+				var maxAmplitude = 1;
+				if(illusionRamp){
+					maxDuration = maxDuration + illusionRamp.max;
+				}
+				if(illusionDur){
+					maxDuration = maxDuration + illusionDur.max;
+				}
+				if(illusionSOA){
+					maxDuration = maxDuration + illusionSOA.max;
+				}
+				if(illusionAmp){
+					maxAmplitude = illusionAmp.max;
+				}
+				points = points.concat(line2env(args,maxAmplitude,maxDuration))
+				illusionLineLeft.duration = maxDuration;
+				illusionLineLeft.set({
+					points: points
+				})
+			})
+
+			Pd.receive('illusionLineRight', function(args) {
+				var points = illusionLineRight.val.points;
+				if(args.length === 1 && args[0] === 0){
+					points = [];
+				}
+				var maxDuration = 0;
+				var maxAmplitude = 1;
+				var timeOffset = 0;
+				if(illusionRamp){
+					maxDuration = maxDuration + illusionRamp.max;
+				}
+				if(illusionDur){
+					maxDuration = maxDuration + illusionDur.max;
+				}
+				if(illusionSOA){
+					maxDuration = maxDuration + illusionSOA.max;
+					timeOffset = illusionSOA.val.value;
+				}
+				if(illusionAmp){
+					maxAmplitude = illusionAmp.max;
+				}
+				points = points.concat(line2env(args,maxAmplitude,maxDuration,timeOffset))
+				illusionLineRight.duration = maxDuration;
+				illusionLineRight.set({
+					points: points
+				})
+			})
+			
+			nx.setLabels("on");
+
+			$.get(patchUrl, function(mainStr) {
+				// Loading the patch
+				patch[patchUrl] = Pd.loadPatch(mainStr);
+			})
+		}
+		addLoadEvent(nxonload[patchUrl])
+	
+	Pd.start();
+	</script>
+  </body>
+</html>

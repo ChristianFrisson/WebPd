@@ -1,0 +1,39 @@
+<!doctype HTML>
+
+<html>
+  <head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="../assets/jquery-2.1.0.min.js"></script>
+	<script type="text/javascript" src="../assets/pd-fileutils.js"></script>
+    <script type="text/javascript" src="../../dist/webpd-latest.js"></script>
+    <script type="text/javascript" src="../assets/nexusUI.js"></script>
+	<script type="text/javascript" src="../assets/webaudiohaptics.js"></script>
+  </head>
+
+  <body>
+
+    <style>
+      body {
+        text-align:center;
+      } 
+    </style>
+
+    <h1 style="font-family:helvetica neue;font-weight:300">Activity 3B sensor</h1>
+	
+	<script>
+
+	var patchUrl = 'pd/3B.sensor.pd'
+
+		nxonload[patchUrl] = function() {
+
+			$.get(patchUrl, function(mainStr) {
+				// Loading the patch
+				patch[patchUrl] = Pd.loadPatch(mainStr);
+			})
+		}
+		addLoadEvent(nxonload[patchUrl])
+	
+	Pd.start();
+	</script>
+  </body>
+</html>

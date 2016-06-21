@@ -1,0 +1,74 @@
+<!doctype HTML>
+
+<html>
+  <head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="../assets/jquery-2.1.0.min.js"></script>
+	<script type="text/javascript" src="../assets/pd-fileutils.js"></script>
+    <script type="text/javascript" src="../../dist/webpd-latest.js"></script>
+    <script type="text/javascript" src="../assets/nexusUI.js"></script>
+	<script type="text/javascript" src="../assets/webaudiohaptics.js"></script>
+  </head>
+
+  <body>
+
+    <style>
+      body {
+        text-align:center;
+      } 
+    </style>
+
+    <h1 style="font-family:helvetica neue;font-weight:300">Activity 1A modulation</h1>
+
+    <canvas nx="slider" id="modulationFreq" label="Frequency" min="0" max="1000" height="50" width="100"></canvas>
+	<canvas nx="slider" id="modulationAmp" label="Amplitude" min="0" max="2" height="50" width="100"></canvas>
+    <canvas nx="slider" id="modulationMod" label="Modulation" min="0" max="200" height="50" width="100"></canvas>
+
+	<script>
+
+	var patchUrl = 'pd/1A.modulation.pd'
+
+		nxonload[patchUrl] = function() {
+
+			if (modulationFreq) {
+				modulationFreq.on('value', function(data) {
+					Pd.send('modulationFreq', [data])
+				})
+					Pd.receive('modulationFreqInit', function(args) {
+						modulationFreq.set({
+							value: args[0]
+						})
+					})
+			}
+			if (modulationAmp) {
+				modulationAmp.on('value', function(data) {
+					Pd.send('modulationAmp', [data])
+				})
+					Pd.receive('modulationAmpInit', function(args) {
+						modulationAmp.set({
+							value: args[0]
+						})
+					})
+			}
+			if (modulationMod) {
+				modulationMod.on('value', function(data) {
+					Pd.send('modulationMod', [data])
+				})
+					Pd.receive('modulationModInit', function(args) {
+						modulationMod.set({
+							value: args[0]
+						})
+					})
+			}	
+
+			$.get(patchUrl, function(mainStr) {
+				// Loading the patch
+				patch[patchUrl] = Pd.loadPatch(mainStr);
+			})
+		}
+		addLoadEvent(nxonload[patchUrl])
+	
+	Pd.start();
+	</script>
+  </body>
+</html>

@@ -1,0 +1,95 @@
+<!doctype HTML>
+
+<html>
+  <head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="../assets/jquery-2.1.0.min.js"></script>
+	<script type="text/javascript" src="../assets/pd-fileutils.js"></script>
+    <script type="text/javascript" src="../../dist/webpd-latest.js"></script>
+    <script type="text/javascript" src="../assets/nexusUI.js"></script>
+	<script type="text/javascript" src="../assets/webaudiohaptics.js"></script>
+  </head>
+
+  <body>
+
+    <style>
+      body {
+        text-align:center;
+      } 
+    </style>
+
+    <h1 style="font-family:helvetica neue;font-weight:300">Activity 1B stimulation</h1>
+
+    <canvas nx="button" id="stimulationTrigger" label="Trigger" height="50" width="100"></canvas>
+    <canvas nx="slider" id="stimulationFreq" label="Frequency" min="10" max="1000" height="50" width="100"></canvas>
+	<canvas nx="slider" id="stimulationAmp" label="Amplitude" min="0" max="2" height="50" width="100"></canvas>
+    <canvas nx="slider" id="stimulationMod" label="Modulation" min="0.1" max="200" height="50" width="100"></canvas>
+    <canvas nx="slider" id="stimulationDur" label="Duration" min="0" max="4000" height="50" width="100"></canvas>
+	
+	<script>
+
+	var patchUrl = 'pd/1B.stimulation.pd'
+
+		nxonload[patchUrl] = function() {
+
+			if (stimulationTrigger) {
+				stimulationTrigger.on('press', function(data) {
+					if (data === 1) {
+						Pd.send('stimulationTrigger', [data])
+					}
+				})
+			}
+
+			if (stimulationFreq) {
+				stimulationFreq.on('value', function(data) {
+					Pd.send('stimulationFreq', [data])
+				})
+					Pd.receive('stimulationFreqInit', function(args) {
+						stimulationFreq.set({
+							value: args[0]
+						})
+					})
+			}
+			if (stimulationAmp) {
+				stimulationAmp.on('value', function(data) {
+					Pd.send('stimulationAmp', [data])
+				})
+					Pd.receive('stimulationAmpInit', function(args) {
+						stimulationAmp.set({
+							value: args[0]
+						})
+					})
+			}
+			if (stimulationMod) {
+				stimulationMod.on('value', function(data) {
+					Pd.send('stimulationMod', [data])
+				})
+					Pd.receive('stimulationModInit', function(args) {
+						stimulationMod.set({
+							value: args[0]
+						})
+					})
+			}	
+			
+			if (stimulationDur) {
+				stimulationDur.on('value', function(data) {
+					Pd.send('stimulationDur', [data])
+				})
+					Pd.receive('stimulationDurInit', function(args) {
+						stimulationDur.set({
+							value: args[0]
+						})
+					})
+			}	
+
+			$.get(patchUrl, function(mainStr) {
+				// Loading the patch
+				patch[patchUrl] = Pd.loadPatch(mainStr);
+			})
+		}
+		addLoadEvent(nxonload[patchUrl])
+	
+	Pd.start();
+	</script>
+  </body>
+</html>
