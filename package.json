@@ -25,7 +25,7 @@
     "underscore": "^1.4.0",
     "pd-fileutils.parser": "git://github.com/sebpiq/pd-fileutils.parser.git#master",
     "waaclock": "^0.5.0",
-    "waaoffsetnode": "^0.1.0",
+    "waaoffsetnode": "git://github.com/WebAudioHaptics/WAAOffsetNode.git#ones-generator",
     "waawhitenoisenode": "^0.1.0",
     "waawire": "^0.1.0",
     "waatablenode": "^0.1.0",
