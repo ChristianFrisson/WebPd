@@ -19,8 +19,12 @@
     </style>
 
     <h1 style="font-family:helvetica neue;font-weight:300">Activity 3B sensor</h1>
-	<canvas nx="meter" id="meter" height="125" width="25"></canvas>
-	<canvas nx="oscilloscope" id="oscilloscope"></canvas>
+	<h2 style="font-family:helvetica neue;font-weight:200">In (sensor)</h2>
+	<canvas nx="meter" id="meterIn" height="125" width="25"></canvas>
+	<canvas nx="oscilloscope" id="oscilloscopeIn"></canvas>
+	<h2 style="font-family:helvetica neue;font-weight:200">Out (haptics)</h2>
+	<canvas nx="meter" id="meterOut" height="125" width="25"></canvas>
+	<canvas nx="oscilloscope" id="oscilloscopeOut"></canvas>
 	<script>
 
 	var patchUrl = 'pd/3B.sensor.pd'
@@ -31,10 +35,14 @@
 				// Loading the patch
 				patch[patchUrl] = Pd.loadPatch(mainStr);
 				var webPdContext = Pd.getAudio().context
+				var audioInNode = webPdContext.createGain()
+				patch[patchUrl].o(0).getOutNode().connect(audioInNode)
+				meterIn.setup(webPdContext,audioInNode);
+				oscilloscopeIn.setup(webPdContext,audioInNode);
 				var audioOutNode = webPdContext.createGain()
-				patch[patchUrl].o(0).getOutNode().connect(audioOutNode)
-				meter.setup(webPdContext,audioOutNode);
-				oscilloscope.setup(webPdContext,audioOutNode);
+				patch[patchUrl].o(1).getOutNode().connect(audioOutNode)
+				meterOut.setup(webPdContext,audioOutNode);
+				oscilloscopeOut.setup(webPdContext,audioOutNode);
 			})
 		}
 		
