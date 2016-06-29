@@ -1,4 +1,4 @@
-#N canvas 553 23 601 337 10;
+#N canvas 938 412 601 337 10;
 #X obj 16 13 tgl 15 0 empty empty empty 17 7 0 10 -262144 -1 -1 1 1
 ;
 #X msg 16 44 \; pd dsp \$1;
@@ -22,6 +22,10 @@ is plugged in.;
 #X msg 179 186 2.25;
 #X obj 16 95 outlet~ sensor;
 #X obj 29 244 outlet~ haptic;
+#X obj 199 160 s sensorLopInit;
+#X obj 214 185 r sensorGain;
+#X obj 218 224 s sensorGainInit;
+#X obj 193 121 r sensorLop;
 #X connect 0 0 1 0;
 #X connect 5 0 9 0;
 #X connect 5 0 17 0;
@@ -34,7 +38,11 @@ is plugged in.;
 #X connect 10 0 16 0;
 #X connect 11 0 9 1;
 #X connect 12 0 11 0;
+#X connect 12 0 19 0;
 #X connect 13 0 12 0;
 #X connect 14 0 8 1;
 #X connect 15 0 14 0;
+#X connect 15 0 21 0;
 #X connect 16 0 15 0;
+#X connect 20 0 15 0;
+#X connect 22 0 12 0;

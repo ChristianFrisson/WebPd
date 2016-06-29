@@ -25,11 +25,35 @@
 	<h2 style="font-family:helvetica neue;font-weight:200">Out (haptics)</h2>
 	<canvas nx="meter" id="meterOut" height="125" width="25"></canvas>
 	<canvas nx="oscilloscope" id="oscilloscopeOut"></canvas>
+	<br/>
+    <canvas nx="slider" id="sensorLop" label="Low pass rolloff frequency" min="0" max="127" height="50" width="150" log="true"></canvas>
+	<canvas nx="slider" id="sensorGain" label="Gain" min="0" max="6" height="50" width="100"></canvas>
 	<script>
 
 	var patchUrl = 'pd/3B.sensor.pd'
 
 		nxonload[patchUrl] = function() {
+			
+			if (sensorLop) {
+				sensorLop.on('value', function(data) {
+					Pd.send('sensorLop', [data])
+				})
+					Pd.receive('sensorLopInit', function(args) {
+						sensorLop.set({
+							value: args[0]
+						})
+					})
+			}
+			if (sensorGain) {
+				sensorGain.on('value', function(data) {
+					Pd.send('sensorGain', [data])
+				})
+					Pd.receive('sensorGainInit', function(args) {
+						sensorGain.set({
+							value: args[0]
+						})
+					})
+			}
 
 			$.get(patchUrl, function(mainStr) {
 				// Loading the patch
